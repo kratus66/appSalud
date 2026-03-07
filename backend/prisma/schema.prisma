@@ -1,0 +1,280 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo de Institución (Multi-Tenant)
+model Institution {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  status    String   @default("ACTIVE")
+  
+  // Metadata (JSON almacenado como String)
+  metadata  String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relaciones
+  users     User[]
+  auditEvents AuditEvent[]
+  services  Service[]
+  shifts    Shift[]
+  contracts Contract[]
+  holidays  Holiday[]
+  
+  @@map("institutions")
+}
+
+// Modelo de Usuario
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  firstName     String
+  lastName      String
+  role          String
+  
+  // Multi-tenant field (null para SUPER_ADMIN)
+  institutionId String?  @map("institution_id")
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+  
+  // Security fields
+  isActive      Boolean  @default(true)
+  failedLoginAttempts Int @default(0)
+  lockedUntil   DateTime?
+  lastLogin     DateTime?
+  
+  // Soft delete
+  deletedAt     DateTime?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relaciones
+  refreshTokens RefreshToken[]
+  auditEvents   AuditEvent[]
+  doctorAppointments Appointment[] @relation("DoctorAppointments")
+  
+  @@index([institutionId])
+  @@map("users")
+}
+
+// Modelo de Refresh Token
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// Modelo de Auditoría (INMUTABLE)
+model AuditEvent {
+  id            String   @id @default(uuid())
+  eventType     String   @map("event_type")
+  
+  // Usuario que ejecuta la acción
+  userId        String?  @map("user_id")
+  user          User?    @relation(fields: [userId], references: [id])
+  
+  // Contexto institucional
+  institutionId String?  @map("institution_id")
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+  
+  // Detalles del evento (JSON almacenado como String)
+  entityType    String?  @map("entity_type")
+  entityId      String?  @map("entity_id")
+  details       String?
+  
+  // Metadata de seguridad
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([eventType])
+  @@index([userId])
+  @@index([institutionId])
+  @@index([createdAt])
+  @@map("audit_events")
+}
+
+// Modelo de Servicio Hospitalario (Sprint 2)
+model Service {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  
+  // Multi-tenant
+  institutionId String   @map("institution_id")
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  
+  isActive      Boolean  @default(true)
+  deletedAt     DateTime?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([name, institutionId])
+  @@index([institutionId])
+  @@map("services")
+}
+
+// Modelo de Turno Clínico (Sprint 2)
+model Shift {
+  id            String   @id @default(uuid())
+  name          String
+  startTime     String   @map("start_time") // Formato "HH:MM"
+  endTime       String   @map("end_time")   // Formato "HH:MM"
+  shiftType     String   @map("shift_type") // MORNING, AFTERNOON, NIGHT, SPECIAL
+  color         String   @default("#3b82f6")
+  
+  // Multi-tenant
+  institutionId String   @map("institution_id")
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  
+  isActive      Boolean  @default(true)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([name, institutionId])
+  @@index([institutionId])
+  @@map("shifts")
+}
+
+// Modelo de Contrato Laboral (Sprint 2)
+model Contract {
+  id                    String   @id @default(uuid())
+  name                  String
+  weeklyHours           Int      @map("weekly_hours")
+  maxConsecutiveNights  Int      @map("max_consecutive_nights")
+  requiredRestHours     Int      @map("required_rest_hours")
+  
+  // Reglas adicionales (JSON almacenado como String)
+  rulesConfig           String?  @map("rules_config")
+  
+  // Multi-tenant
+  institutionId         String   @map("institution_id")
+  institution           Institution @relation(fields: [institutionId], references: [id])
+  
+  isActive              Boolean  @default(true)
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@unique([name, institutionId])
+  @@index([institutionId])
+  @@map("contracts")
+}
+
+// Modelo de Festivos (Sprint 2)
+model Holiday {
+  id            String   @id @default(uuid())
+  holidayDate   DateTime @map("holiday_date")
+  name          String
+  countryCode   String   @default("CO") @map("country_code")
+  
+  // Multi-tenant (null = festivo nacional aplicable a todos)
+  institutionId String?  @map("institution_id")
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([institutionId])
+  @@index([holidayDate])
+  @@map("holidays")
+}
+
+// Modelo de Paciente (Sprint 3)
+model Patient {
+  id                String   @id @default(uuid())
+  firstName         String   @map("first_name")
+  lastName          String   @map("last_name")
+  documentType      String   @map("document_type") // CC, TI, CE, PA
+  documentNumber    String   @map("document_number")
+  email             String?
+  phone             String?
+  birthDate         DateTime? @map("birth_date")
+  gender            String?
+  address           String?
+  
+  // Multi-tenant
+  institutionId     String   @map("institution_id")
+  
+  // Metadata adicional (JSON)
+  metadata          String?
+  
+  isActive          Boolean  @default(true)
+  deletedAt         DateTime?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relaciones
+  appointments      Appointment[]
+  
+  @@unique([documentNumber, institutionId])
+  @@index([institutionId])
+  @@index([documentNumber])
+  @@map("patients")
+}
+
+// Modelo de Cita Médica (Sprint 3)
+model Appointment {
+  id            String   @id @default(uuid())
+  
+  // Relación con paciente
+  patientId     String   @map("patient_id")
+  patient       Patient  @relation(fields: [patientId], references: [id])
+  
+  // Relación con médico (User con rol DOCTOR)
+  doctorId      String   @map("doctor_id")
+  doctor        User     @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  
+  // Multi-tenant
+  institutionId String   @map("institution_id")
+  
+  // Fecha y hora de la cita
+  appointmentDate    DateTime @map("appointment_date")
+  startTime          String   @map("start_time") // Formato "HH:MM"
+  endTime            String   @map("end_time")   // Formato "HH:MM"
+  
+  // Detalles de la cita
+  reason        String?  // Motivo de la consulta (opcional)
+  notes         String?  // Observaciones del médico
+  
+  // Estado de la cita
+  status        String   @default("SCHEDULED") // SCHEDULED, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW
+  
+  // Metadata adicional
+  metadata      String?
+  
+  // Soft delete
+  deletedAt     DateTime?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([institutionId])
+  @@index([appointmentDate])
+  @@index([status])
+  @@map("appointments")
+}
+
