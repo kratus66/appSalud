@@ -175,7 +175,7 @@ export function Sidebar() {
   );
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-primary-900 to-primary-800 text-white shadow-2xl z-40">
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-primary-900 to-primary-800 text-white shadow-2xl z-40 flex flex-col">
       {/* Logo / Header */}
       <div className="flex items-center justify-center h-16 border-b border-primary-700 px-6">
         <div className="flex items-center space-x-3">
@@ -214,7 +214,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3">
+      <nav className="flex-1 overflow-y-auto py-4 px-3 scrollbar-thin scrollbar-thumb-primary-600 scrollbar-track-transparent">
         <ul className="space-y-1">
           {filteredMenuItems.map((item) => {
             const Icon = item.icon;
@@ -246,7 +246,7 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-primary-700 bg-primary-900/50">
+      <div className="p-3 border-t border-primary-700 bg-primary-900/50 shrink-0">
         <LogoutButton />
       </div>
     </aside>
