@@ -22,6 +22,9 @@ import {
   CalendarRange,
   Ban,
   BarChart2,
+  Shield,
+  DollarSign,
+  CreditCard,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { UserRole } from '@/types';
@@ -161,6 +164,25 @@ const menuItems: MenuItem[] = [
     label: 'Auditoría',
     href: '/auditoria',
     roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN],
+  },
+  // ── Admin SaaS (Solo SUPER_ADMIN) ──
+  {
+    icon: Shield,
+    label: 'Panel Admin',
+    href: '/admin/dashboard',
+    roles: [UserRole.SUPER_ADMIN],
+  },
+  {
+    icon: DollarSign,
+    label: 'Planes',
+    href: '/admin/planes',
+    roles: [UserRole.SUPER_ADMIN],
+  },
+  {
+    icon: CreditCard,
+    label: 'Suscripciones',
+    href: '/admin/suscripciones',
+    roles: [UserRole.SUPER_ADMIN],
   },
 ];
 

@@ -38,9 +38,17 @@ export interface Institution {
   id: string;
   name: string;
   code: string;
+  type: 'CLINIC' | 'HOSPITAL' | 'LAB' | 'OTHER';
   status: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
+  address?: string;
+  city?: string;
+  country?: string;
+  phone?: string;
+  email?: string;
   createdAt: string;
   userCount?: number;
+  currentPlan?: { name: string; price: number } | null;
+  currentSubscription?: Subscription | null;
   metadata?: {
     address?: string;
     phone?: string;
@@ -49,6 +57,40 @@ export interface Institution {
     specialties?: string[];
     emergencyPhone?: string;
   };
+}
+
+export enum SubscriptionStatus {
+  ACTIVE = 'ACTIVE',
+  CANCELLED = 'CANCELLED',
+  EXPIRED = 'EXPIRED',
+  TRIAL = 'TRIAL',
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  maxUsers: number;
+  maxDoctors: number;
+  maxPatients: number;
+  features?: any;
+  isActive: boolean;
+  subscriptionCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Subscription {
+  id: string;
+  institutionId: string;
+  institution?: { id: string; name: string; code: string; type?: string; city?: string };
+  planId: string;
+  plan?: { id: string; name: string; price: number };
+  startDate: string;
+  endDate?: string | null;
+  status: SubscriptionStatus;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuditEvent {

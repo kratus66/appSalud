@@ -15,8 +15,16 @@ model Institution {
   id        String   @id @default(uuid())
   name      String
   code      String   @unique
+  type      String   @default("CLINIC") // CLINIC, HOSPITAL, LAB, OTHER
   status    String   @default("ACTIVE")
-  
+
+  // Datos de contacto
+  address   String?
+  city      String?
+  country   String  @default("CO")
+  phone     String?
+  email     String?
+
   // Metadata (JSON almacenado como String)
   metadata  String?
   
@@ -34,8 +42,55 @@ model Institution {
   doctorProfiles DoctorProfile[]
   doctorSchedules DoctorSchedule[]
   timeBlocks     TimeBlock[]
+  subscriptions  Subscription[]
   
   @@map("institutions")
+}
+
+// Plan de Suscripción SaaS
+model SubscriptionPlan {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  price       Float
+  maxUsers    Int      @map("max_users")
+  maxDoctors  Int      @map("max_doctors")
+  maxPatients Int      @map("max_patients")
+
+  // Características adicionales (JSON)
+  features    String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+// Suscripción de una institución a un plan
+model Subscription {
+  id            String   @id @default(uuid())
+
+  institutionId String   @map("institution_id")
+  institution   Institution @relation(fields: [institutionId], references: [id])
+
+  planId        String   @map("plan_id")
+  plan          SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  startDate     DateTime @map("start_date")
+  endDate       DateTime? @map("end_date")
+
+  // ACTIVE | CANCELLED | EXPIRED | TRIAL
+  status        String   @default("TRIAL")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([institutionId])
+  @@index([planId])
+  @@map("subscriptions")
 }
 
 // Modelo de Usuario

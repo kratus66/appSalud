@@ -25,6 +25,12 @@ export class InstitutionsService {
       data: {
         name: dto.name,
         code: dto.code,
+        type: dto.type,
+        address: dto.address,
+        city: dto.city,
+        country: dto.country ?? 'CO',
+        phone: dto.phone,
+        email: dto.email,
         metadata: dto.metadata ? JSON.stringify(dto.metadata) : null,
       },
     });
@@ -66,6 +72,11 @@ export class InstitutionsService {
           _count: {
             select: { users: true },
           },
+          subscriptions: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            include: { plan: { select: { name: true, price: true } } },
+          },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -77,6 +88,8 @@ export class InstitutionsService {
         ...inst,
         metadata: inst.metadata ? JSON.parse(inst.metadata) : null,
         userCount: inst._count.users,
+        currentPlan: inst.subscriptions[0]?.plan ?? null,
+        currentSubscription: inst.subscriptions[0] ?? null,
       })),
       total,
     };
@@ -162,12 +175,20 @@ export class InstitutionsService {
   }
 
   async getStats() {
-    const [total, active, suspended, inactive] = await Promise.all([
+    const [total, active, suspended, inactive, trial] = await Promise.all([
       this.prisma.institution.count(),
       this.prisma.institution.count({ where: { status: InstitutionStatus.ACTIVE } }),
       this.prisma.institution.count({ where: { status: InstitutionStatus.SUSPENDED } }),
       this.prisma.institution.count({ where: { status: InstitutionStatus.INACTIVE } }),
+      this.prisma.subscription.count({ where: { status: 'TRIAL' } }).catch(() => 0),
     ]);
+
+    // Monthly revenue from active subscriptions
+    const activeSubs = await this.prisma.subscription.findMany({
+      where: { status: 'ACTIVE' },
+      include: { plan: { select: { price: true } } },
+    }).catch(() => []);
+    const monthlyRevenue = activeSubs.reduce((sum: number, s: any) => sum + (s.plan?.price ?? 0), 0);
 
     const recent = await this.prisma.institution.findMany({
       take: 5,
@@ -176,6 +197,8 @@ export class InstitutionsService {
         id: true,
         name: true,
         code: true,
+        type: true,
+        city: true,
         status: true,
         createdAt: true,
       },
@@ -183,11 +206,9 @@ export class InstitutionsService {
 
     return {
       total,
-      byStatus: {
-        active,
-        suspended,
-        inactive,
-      },
+      byStatus: { active, suspended, inactive },
+      trial,
+      monthlyRevenue,
       recent,
     };
   }

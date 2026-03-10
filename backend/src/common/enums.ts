@@ -16,6 +16,20 @@ export enum InstitutionStatus {
   INACTIVE = 'INACTIVE',
 }
 
+export enum InstitutionType {
+  CLINIC = 'CLINIC',
+  HOSPITAL = 'HOSPITAL',
+  LAB = 'LAB',
+  OTHER = 'OTHER',
+}
+
+export enum SubscriptionStatus {
+  ACTIVE = 'ACTIVE',
+  CANCELLED = 'CANCELLED',
+  EXPIRED = 'EXPIRED',
+  TRIAL = 'TRIAL',
+}
+
 export enum ShiftType {
   MORNING = 'MORNING',
   AFTERNOON = 'AFTERNOON',
