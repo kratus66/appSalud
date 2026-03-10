@@ -12,6 +12,10 @@ import { ContractsModule } from './contracts/contracts.module';
 import { HolidaysModule } from './holidays/holidays.module';
 import { PatientsModule } from './patients/patients.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { SpecialtiesModule } from './specialties/specialties.module';
+import { DoctorsModule } from './doctors/doctors.module';
+import { AvailabilityModule } from './availability/availability.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -41,6 +45,10 @@ import { AppointmentsModule } from './appointments/appointments.module';
     HolidaysModule,
     PatientsModule,
     AppointmentsModule,
+    SpecialtiesModule,
+    DoctorsModule,
+    AvailabilityModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule {}

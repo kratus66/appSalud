@@ -14,6 +14,7 @@ export interface User {
   firstName: string;
   lastName: string;
   role: UserRole;
+  specialty?: string | null;
   institutionId: string | null;
   institution: {
     id: string;
@@ -208,6 +209,7 @@ export interface Appointment {
     firstName: string;
     lastName: string;
     email: string;
+    specialty?: string | null;
   };
   appointmentDate: string;
   startTime: string;
@@ -220,3 +222,193 @@ export interface Appointment {
   createdAt: string;
   updatedAt: string;
 }
+
+// Sprint 3 - Médicos y Especialidades
+
+export interface Specialty {
+  id: string;
+  name: string;
+  description?: string | null;
+  color: string;
+  institutionId: string;
+  isActive: boolean;
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { doctors: number };
+}
+
+export interface DoctorProfile {
+  id: string;
+  userId: string;
+  specialtyId: string;
+  specialty: {
+    id: string;
+    name: string;
+    color: string;
+    description?: string | null;
+  };
+  licenseNumber?: string | null;
+  phone?: string | null;
+  consultingRoom?: string | null;
+  bio?: string | null;
+  institutionId: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Doctor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  isActive: boolean;
+  createdAt: string;
+  doctorProfile: DoctorProfile | null;
+}
+
+export interface CreateDoctorDto {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  specialtyId: string;
+  licenseNumber?: string;
+  phone?: string;
+  consultingRoom?: string;
+  bio?: string;
+  institutionId?: string;
+}
+
+export interface UpdateDoctorDto {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  password?: string;
+  specialtyId?: string;
+  licenseNumber?: string;
+  phone?: string;
+  consultingRoom?: string;
+  bio?: string;
+  isActive?: boolean;
+}
+
+export interface CreateSpecialtyDto {
+  name: string;
+  description?: string;
+  color?: string;
+  institutionId?: string;
+}
+
+export interface UpdateSpecialtyDto extends Partial<CreateSpecialtyDto> {
+  isActive?: boolean;
+}
+
+// ─── Sprint 4 - Disponibilidad y Horarios ─────────────────────
+
+export enum RecurringFrequency {
+  WEEKLY = 'WEEKLY',
+  BIWEEKLY = 'BIWEEKLY',
+  MONTHLY = 'MONTHLY',
+}
+
+export enum SlotStatus {
+  FREE = 'FREE',
+  BOOKED = 'BOOKED',
+  BLOCKED = 'BLOCKED',
+}
+
+export interface DoctorSchedule {
+  id: string;
+  doctorId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  slotDuration: number;
+  institutionId: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TimeBlock {
+  id: string;
+  doctorId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  reason?: string | null;
+  institutionId: string;
+  createdAt: string;
+}
+
+export interface RecurringAppointment {
+  id: string;
+  patientId: string;
+  patient: { firstName: string; lastName: string; documentNumber: string };
+  doctorId: string;
+  doctor: { firstName: string; lastName: string };
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  frequency: RecurringFrequency;
+  reason?: string | null;
+  startDate: string;
+  endDate?: string | null;
+  institutionId: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AvailabilitySlot {
+  time: string;
+  endTime: string;
+  status: SlotStatus;
+  appointmentId?: string;
+  patientName?: string;
+  reason?: string;
+  blockReason?: string;
+}
+
+export interface AvailabilityResponse {
+  doctorId: string;
+  date: string;
+  dayOfWeek: number;
+  hasSchedule: boolean;
+  scheduleStart?: string;
+  scheduleEnd?: string;
+  slotDuration?: number;
+  slots: AvailabilitySlot[];
+  message?: string;
+  summary?: { total: number; free: number; booked: number; blocked: number };
+}
+
+export interface CreateScheduleDto {
+  doctorId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  slotDuration?: number;
+}
+
+export interface CreateBlockDto {
+  doctorId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  reason?: string;
+}
+
+export interface CreateRecurringAppointmentDto {
+  patientId: string;
+  doctorId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  frequency: RecurringFrequency;
+  reason?: string;
+  startDate: string;
+  endDate?: string;
+}
+

@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { seedPatients } from './seedPatients';
+import { seedDoctors } from './seedDoctors';
 
 const prisma = new PrismaClient();
 
@@ -105,22 +107,22 @@ async function main() {
   console.log('✅ Consulta created:', consulta.email);
 
   // Crear servicios de ejemplo
-  const servicioUCI = await prisma.service.create({
-    data: {
-      name: 'UCI - Unidad de Cuidados Intensivos',
-      description: 'Unidad especializada en pacientes críticos',
-      institutionId: institution.id,
-      isActive: true,
-    },
-  });
-
-  const servicioUrgencias = await prisma.service.create({
-    data: {
-      name: 'Urgencias',
-      description: 'Atención de emergencias médicas 24/7',
-      institutionId: institution.id,
-      isActive: true,
-    },
+  await prisma.service.createMany({
+    data: [
+      {
+        name: 'UCI - Unidad de Cuidados Intensivos',
+        description: 'Unidad especializada en pacientes críticos',
+        institutionId: institution.id,
+        isActive: true,
+      },
+      {
+        name: 'Urgencias',
+        description: 'Atención de emergencias médicas 24/7',
+        institutionId: institution.id,
+        isActive: true,
+      },
+    ],
+    skipDuplicates: true,
   });
 
   console.log('✅ Services created: UCI, Urgencias');
@@ -153,6 +155,7 @@ async function main() {
         institutionId: institution.id,
       },
     ],
+    skipDuplicates: true,
   });
 
   console.log('✅ Shifts created: Mañana, Tarde, Noche');
@@ -177,6 +180,7 @@ async function main() {
         institutionId: institution.id,
       },
     ],
+    skipDuplicates: true,
   });
 
   console.log('✅ Contracts created: 48h, 36h');
@@ -204,17 +208,32 @@ async function main() {
   ];
 
   for (const holiday of colombianHolidays2026) {
-    await prisma.holiday.create({
-      data: {
+    const existingHoliday = await prisma.holiday.findFirst({
+      where: {
         holidayDate: new Date(holiday.date),
         name: holiday.name,
         countryCode: 'CO',
-        institutionId: null, // Festivo nacional
+        institutionId: null,
       },
     });
+
+    if (!existingHoliday) {
+      await prisma.holiday.create({
+        data: {
+          holidayDate: new Date(holiday.date),
+          name: holiday.name,
+          countryCode: 'CO',
+          institutionId: null, // Festivo nacional
+        },
+      });
+    }
   }
 
   console.log('✅ Colombian holidays 2026 created');
+
+  // Seed de pacientes y médicos
+  await seedPatients(institution.id);
+  await seedDoctors(institution.id);
 
   // Registrar eventos de auditoría
   await prisma.auditEvent.create({

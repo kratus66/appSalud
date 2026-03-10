@@ -17,6 +17,11 @@ import {
   UserCircle,
   CalendarCheck,
   CalendarClock,
+  Stethoscope,
+  Tag,
+  CalendarRange,
+  Ban,
+  BarChart2,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { UserRole } from '@/types';
@@ -92,10 +97,40 @@ const menuItems: MenuItem[] = [
     roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.RECEPCIONISTA, UserRole.PLANIFICADOR],
   },
   {
+    icon: CalendarRange,
+    label: 'Disponibilidad',
+    href: '/disponibilidad',
+    roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.RECEPCIONISTA],
+  },
+  {
+    icon: BarChart2,
+    label: 'Reportes',
+    href: '/reportes',
+    roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PLANIFICADOR, UserRole.APROBADOR, UserRole.CONSULTA],
+  },
+  {
     icon: CalendarClock,
     label: 'Mi Agenda',
     href: '/mi-agenda',
     roles: [UserRole.DOCTOR],
+  },
+  {
+    icon: Ban,
+    label: 'Mi Horario',
+    href: '/mi-horario',
+    roles: [UserRole.DOCTOR],
+  },
+  {
+    icon: Stethoscope,
+    label: 'Médicos',
+    href: '/medicos',
+    roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN],
+  },
+  {
+    icon: Tag,
+    label: 'Especialidades',
+    href: '/especialidades',
+    roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN],
   },
   {
     icon: Building2,

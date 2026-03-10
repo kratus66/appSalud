@@ -24,12 +24,16 @@ model Institution {
   updatedAt DateTime @updatedAt
   
   // Relaciones
-  users     User[]
-  auditEvents AuditEvent[]
-  services  Service[]
-  shifts    Shift[]
-  contracts Contract[]
-  holidays  Holiday[]
+  users          User[]
+  auditEvents    AuditEvent[]
+  services       Service[]
+  shifts         Shift[]
+  contracts      Contract[]
+  holidays       Holiday[]
+  specialties    Specialty[]
+  doctorProfiles DoctorProfile[]
+  doctorSchedules DoctorSchedule[]
+  timeBlocks     TimeBlock[]
   
   @@map("institutions")
 }
@@ -47,6 +51,9 @@ model User {
   institutionId String?  @map("institution_id")
   institution   Institution? @relation(fields: [institutionId], references: [id])
   
+  // Specialty (for DOCTOR role)
+  specialty     String?
+
   // Security fields
   isActive      Boolean  @default(true)
   failedLoginAttempts Int @default(0)
@@ -60,9 +67,13 @@ model User {
   updatedAt     DateTime @updatedAt
   
   // Relaciones
-  refreshTokens RefreshToken[]
-  auditEvents   AuditEvent[]
-  doctorAppointments Appointment[] @relation("DoctorAppointments")
+  refreshTokens      RefreshToken[]
+  auditEvents        AuditEvent[]
+  doctorAppointments Appointment[]   @relation("DoctorAppointments")
+  doctorProfile      DoctorProfile?
+  doctorSchedules    DoctorSchedule[]
+  timeBlocks         TimeBlock[]
+  recurringAppointmentsAsDoctor RecurringAppointment[] @relation("RecurringDoctor")
   
   @@index([institutionId])
   @@map("users")
@@ -200,6 +211,67 @@ model Holiday {
   @@map("holidays")
 }
 
+// Modelo de Especialidad Médica
+model Specialty {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  color         String   @default("#3b82f6")
+  
+  // Multi-tenant
+  institutionId String   @map("institution_id")
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  
+  isActive      Boolean  @default(true)
+  deletedAt     DateTime?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relaciones
+  doctors       DoctorProfile[]
+  
+  @@unique([name, institutionId])
+  @@index([institutionId])
+  @@map("specialties")
+}
+
+// Perfil de Médico (1:1 con User de rol DOCTOR)
+model DoctorProfile {
+  id              String   @id @default(uuid())
+  
+  // 1:1 con User
+  userId          String   @unique @map("user_id")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Especialidad
+  specialtyId     String   @map("specialty_id")
+  specialty       Specialty @relation(fields: [specialtyId], references: [id])
+  
+  // Información profesional
+  licenseNumber   String?  @map("license_number")   // Nro. tarjeta profesional
+  phone           String?
+  consultingRoom  String?  @map("consulting_room")  // Consultorio
+  bio             String?                            // Resumen profesional
+  
+  // Horario de atención (JSON almacenado como String)
+  scheduleConfig  String?  @map("schedule_config")
+  
+  // Multi-tenant
+  institutionId   String   @map("institution_id")
+  institution     Institution @relation(fields: [institutionId], references: [id])
+  
+  isActive        Boolean  @default(true)
+  deletedAt       DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([institutionId])
+  @@index([specialtyId])
+  @@map("doctor_profiles")
+}
+
 // Modelo de Paciente (Sprint 3)
 model Patient {
   id                String   @id @default(uuid())
@@ -227,6 +299,7 @@ model Patient {
   
   // Relaciones
   appointments      Appointment[]
+  recurringAppointments RecurringAppointment[] @relation("RecurringPatient")
   
   @@unique([documentNumber, institutionId])
   @@index([institutionId])
@@ -261,6 +334,10 @@ model Appointment {
   // Estado de la cita
   status        String   @default("SCHEDULED") // SCHEDULED, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW
   
+  // Cita recurrente origen (opcional)
+  recurringAppointmentId String? @map("recurring_appointment_id")
+  recurringAppointment   RecurringAppointment? @relation(fields: [recurringAppointmentId], references: [id])
+  
   // Metadata adicional
   metadata      String?
   
@@ -275,6 +352,104 @@ model Appointment {
   @@index([institutionId])
   @@index([appointmentDate])
   @@index([status])
+  @@index([recurringAppointmentId])
   @@map("appointments")
 }
 
+// ────────────────────────────────────────────────────────────────
+// Sprint 4 - Disponibilidad y Horarios
+// ────────────────────────────────────────────────────────────────
+
+// Horario laboral del médico por día de semana
+model DoctorSchedule {
+  id            String   @id @default(uuid())
+  
+  doctorId      String   @map("doctor_id")
+  doctor        User     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  // 0=Dom 1=Lun 2=Mar 3=Mié 4=Jue 5=Vie 6=Sáb
+  dayOfWeek     Int      @map("day_of_week")
+  
+  startTime     String   @map("start_time")  // "HH:MM"
+  endTime       String   @map("end_time")    // "HH:MM"
+  
+  // Duración del slot en minutos (default 30)
+  slotDuration  Int      @default(30) @map("slot_duration")
+  
+  institutionId String   @map("institution_id")
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  
+  isActive      Boolean  @default(true)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([doctorId, dayOfWeek])
+  @@index([doctorId])
+  @@index([institutionId])
+  @@map("doctor_schedules")
+}
+
+// Bloqueo de agenda (vacaciones, reuniones, etc.)
+model TimeBlock {
+  id            String   @id @default(uuid())
+  
+  doctorId      String   @map("doctor_id")
+  doctor        User     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  // Fecha del bloqueo
+  date          DateTime
+  startTime     String   @map("start_time") // "HH:MM"  (null = todo el día)
+  endTime       String   @map("end_time")   // "HH:MM"
+  
+  reason        String?
+  
+  institutionId String   @map("institution_id")
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([doctorId])
+  @@index([date])
+  @@index([institutionId])
+  @@map("time_blocks")
+}
+
+// Cita recurrente (terapia semanal, control mensual, etc.)
+model RecurringAppointment {
+  id            String   @id @default(uuid())
+  
+  patientId     String   @map("patient_id")
+  patient       Patient  @relation("RecurringPatient", fields: [patientId], references: [id])
+  
+  doctorId      String   @map("doctor_id")
+  doctor        User     @relation("RecurringDoctor", fields: [doctorId], references: [id])
+  
+  // Día de la semana que aplica la recurrencia
+  dayOfWeek     Int      @map("day_of_week")
+  startTime     String   @map("start_time")
+  endTime       String   @map("end_time")
+  
+  // WEEKLY | BIWEEKLY | MONTHLY
+  frequency     String
+  
+  reason        String?
+  
+  startDate     DateTime @map("start_date")
+  endDate       DateTime? @map("end_date")
+  
+  institutionId String   @map("institution_id")
+  
+  isActive      Boolean  @default(true)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Citas generadas sinteradas
+  appointments  Appointment[]
+  
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([institutionId])
+  @@map("recurring_appointments")
+}

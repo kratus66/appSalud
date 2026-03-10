@@ -365,8 +365,13 @@ function AppointmentsPage() {
                             {viewMode === 'week' && (
                               <>
                                 <div className="text-xs opacity-75 truncate">
-                                  Dr. {apt.doctor.firstName} {apt.doctor.lastName}
+                                  Dr(a). {apt.doctor.firstName} {apt.doctor.lastName}
                                 </div>
+                                {apt.doctor.specialty && (
+                                  <div className="text-xs opacity-60 truncate italic">
+                                    {apt.doctor.specialty}
+                                  </div>
+                                )}
                                 {apt.reason && (
                                   <div className="text-xs opacity-75 truncate mt-1">
                                     {apt.reason}

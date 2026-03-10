@@ -11,6 +11,12 @@ export class AppointmentsService {
     private auditService: AuditService,
   ) {}
 
+  /** Convierte "HH:MM" a minutos desde medianoche */
+  private timeToMinutes(time: string): number {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  }
+
   /**
    * Validar conflictos de horario (doble reserva)
    */
@@ -98,6 +104,46 @@ export class AppointmentsService {
     // Validar que startTime < endTime
     if (dto.startTime >= dto.endTime) {
       throw new BadRequestException('La hora de inicio debe ser menor a la hora de fin');
+    }
+
+    // Validar horario laboral del médico (parsear localmente para evitar desfase UTC en getDay())
+    const [ay, am, ad] = (dto.appointmentDate as string).split('-').map(Number);
+    const localApptDate = new Date(ay, am - 1, ad);
+    const dayOfWeek = localApptDate.getDay(); // 0=Dom … 6=Sáb
+
+    const schedule = await this.prisma.doctorSchedule.findFirst({
+      where: { doctorId: dto.doctorId, dayOfWeek, isActive: true },
+    });
+
+    if (schedule) {
+      const apptStart = this.timeToMinutes(dto.startTime);
+      const apptEnd = this.timeToMinutes(dto.endTime);
+      const schedStart = this.timeToMinutes(schedule.startTime);
+      const schedEnd = this.timeToMinutes(schedule.endTime);
+
+      if (apptStart < schedStart || apptEnd > schedEnd) {
+        throw new BadRequestException(
+          `El médico solo atiende de ${schedule.startTime} a ${schedule.endTime} ese día`,
+        );
+      }
+    }
+
+    // Validar bloqueos de agenda (new Date('YYYY-MM-DD') = UTC midnight, igual que como se almacenan los bloques)
+    const dateOnly = new Date(dto.appointmentDate as string);
+    const blocks = await this.prisma.timeBlock.findMany({
+      where: { doctorId: dto.doctorId, date: dateOnly },
+    });
+
+    for (const block of blocks) {
+      const blockStart = this.timeToMinutes(block.startTime);
+      const blockEnd = this.timeToMinutes(block.endTime);
+      const apptStart = this.timeToMinutes(dto.startTime);
+      const apptEnd = this.timeToMinutes(dto.endTime);
+      if (apptStart < blockEnd && apptEnd > blockStart) {
+        throw new BadRequestException(
+          `El médico tiene su agenda bloqueada en ese horario${block.reason ? ': ' + block.reason : ''}.`,
+        );
+      }
     }
 
     // Verificar doble reserva
@@ -193,6 +239,7 @@ export class AppointmentsService {
             firstName: true,
             lastName: true,
             email: true,
+            specialty: true,
           },
         },
       },
@@ -227,6 +274,7 @@ export class AppointmentsService {
             firstName: true,
             lastName: true,
             email: true,
+            specialty: true,
           },
         },
       },

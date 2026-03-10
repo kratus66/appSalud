@@ -111,6 +111,7 @@ export class UsersService {
           firstName: true,
           lastName: true,
           role: true,
+          specialty: true,
           institutionId: true,
           isActive: true,
           lastLogin: true,

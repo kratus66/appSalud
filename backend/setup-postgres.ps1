@@ -6,21 +6,41 @@ Write-Host "==============================================" -ForegroundColor Cya
 Write-Host ""
 
 # Verificar si PostgreSQL está instalado
-$postgresPath = Get-Command psql -ErrorAction SilentlyContinue
-if (-not $postgresPath) {
-    Write-Host "❌ PostgreSQL no está instalado" -ForegroundColor Red
+$psqlCommand = Get-Command psql -ErrorAction SilentlyContinue
+
+if ($psqlCommand) {
+    $psqlExe = $psqlCommand.Source
+} else {
+    $candidatePaths = @(
+        "C:\Program Files\PostgreSQL\17\bin\psql.exe",
+        "C:\Program Files\PostgreSQL\16\bin\psql.exe",
+        "C:\Program Files\PostgreSQL\15\bin\psql.exe",
+        "C:\Program Files\PostgreSQL\14\bin\psql.exe",
+        "C:\Program Files\PostgreSQL\13\bin\psql.exe"
+    )
+
+    $psqlExe = $candidatePaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+}
+
+if (-not $psqlExe) {
+    Write-Host "❌ PostgreSQL no está instalado o psql no está disponible" -ForegroundColor Red
     Write-Host "   Descarga desde: https://www.postgresql.org/download/windows/" -ForegroundColor Yellow
     exit 1
 }
 
-$version = & psql --version
+$psqlBin = Split-Path -Path $psqlExe -Parent
+if (-not ($env:Path -split ';' | Where-Object { $_ -eq $psqlBin })) {
+    $env:Path = "$psqlBin;$env:Path"
+}
+
+$version = & $psqlExe --version
 Write-Host "✅ PostgreSQL encontrado: $version" -ForegroundColor Green
 Write-Host ""
 
 # Crear la base de datos
 Write-Host "📦 Creando base de datos 'hospital_saas'..." -ForegroundColor Cyan
 $env:PGPASSWORD = "postgres"
-& psql -U postgres -c "CREATE DATABASE hospital_saas;" 2>$null
+& $psqlExe -U postgres -c "CREATE DATABASE hospital_saas;" 2>$null
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "✅ Base de datos creada" -ForegroundColor Green

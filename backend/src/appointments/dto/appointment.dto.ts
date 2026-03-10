@@ -16,7 +16,7 @@ export class CreateAppointmentDto {
   @ApiProperty({ example: '2024-03-10' })
   @IsDateString()
   @IsNotEmpty()
-  appointmentDate: Date;
+  appointmentDate: string;
 
   @ApiProperty({ example: '09:00' })
   @IsString()
@@ -44,13 +44,18 @@ export class CreateAppointmentDto {
   @IsOptional()
   @IsEnum(AppointmentStatus)
   status?: AppointmentStatus;
+
+  @ApiPropertyOptional({ example: 'institution-uuid' })
+  @IsOptional()
+  @IsUUID()
+  institutionId?: string;
 }
 
 export class UpdateAppointmentDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
-  appointmentDate?: Date;
+  appointmentDate?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

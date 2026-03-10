@@ -14,6 +14,7 @@ if exist "C:\Program Files\PostgreSQL\13\bin\psql.exe" set "PGBIN=C:\Program Fil
 if exist "C:\Program Files\PostgreSQL\14\bin\psql.exe" set "PGBIN=C:\Program Files\PostgreSQL\14\bin"
 if exist "C:\Program Files\PostgreSQL\15\bin\psql.exe" set "PGBIN=C:\Program Files\PostgreSQL\15\bin"
 if exist "C:\Program Files\PostgreSQL\16\bin\psql.exe" set "PGBIN=C:\Program Files\PostgreSQL\16\bin"
+if exist "C:\Program Files\PostgreSQL\17\bin\psql.exe" set "PGBIN=C:\Program Files\PostgreSQL\17\bin"
 
 if "%PGBIN%"=="" (
     echo ERROR: PostgreSQL no encontrado en C:\Program Files\PostgreSQL\
