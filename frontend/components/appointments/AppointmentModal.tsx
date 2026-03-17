@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Appointment, AppointmentStatus, Patient, SlotStatus, AvailabilitySlot } from '@/types';
 import { patientsService } from '@/services/patients.service';
-import { usersService } from '@/services/users.service';
+import { doctorsService } from '@/services/doctors.service';
 import { availabilityService } from '@/services/availability.service';
 import { Search, Clock } from 'lucide-react';
 
@@ -53,7 +53,7 @@ export default function AppointmentModal({
   // Cargar doctores
   const { data: doctorsData } = useQuery({
     queryKey: ['doctors'],
-    queryFn: () => usersService.getAll(),
+    queryFn: () => doctorsService.getAll(),
     enabled: isOpen,
   });
 
@@ -71,17 +71,17 @@ export default function AppointmentModal({
     enabled: !!formData.doctorId && !!selectedDate && isOpen && !appointment,
   });
 
-  const doctors = doctorsData?.users.filter((u: any) => u.role === 'DOCTOR' && u.isActive) || [];
+  const doctors = doctorsData?.doctors || [];
   const allPatients = patientsData?.patients || [];
 
-  // Especialidades únicas
+  // Especialidades únicas (vienen de doctorProfile.specialty.name)
   const specialties = Array.from(
-    new Set(doctors.map((d: any) => d.specialty).filter(Boolean))
+    new Set(doctors.map((d: any) => d.doctorProfile?.specialty?.name).filter(Boolean))
   ).sort() as string[];
 
   // Doctores filtrados por especialidad
   const filteredDoctors = specialtyFilter
-    ? doctors.filter((d: any) => d.specialty === specialtyFilter)
+    ? doctors.filter((d: any) => d.doctorProfile?.specialty?.name === specialtyFilter)
     : doctors;
 
   // Doctor seleccionado actualmente
@@ -331,14 +331,14 @@ export default function AppointmentModal({
               {filteredDoctors.map((doctor: any) => (
                 <option key={doctor.id} value={doctor.id}>
                   Dr(a). {doctor.firstName} {doctor.lastName}
-                  {doctor.specialty ? ` — ${doctor.specialty}` : ''}
+                  {doctor.doctorProfile?.specialty?.name ? ` — ${doctor.doctorProfile.specialty.name}` : ''}
                 </option>
               ))}
             </select>
 
-            {selectedDoctor?.specialty && (
+            {(selectedDoctor as any)?.doctorProfile?.specialty?.name && (
               <p className="mt-1 text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded inline-block">
-                🩺 {(selectedDoctor as any).specialty}
+                🩺 {(selectedDoctor as any).doctorProfile.specialty.name}
               </p>
             )}
           </div>

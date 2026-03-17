@@ -29,6 +29,14 @@ export class ReportsController {
     return isNaN(d.getTime()) ? undefined : d;
   }
 
+  private parseEndDateParam(value?: string): Date | undefined {
+    if (!value) return undefined;
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return undefined;
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
+
   // ─── GET /reports/overview ────────────────────────────────────────────────
 
   @Get('overview')
@@ -53,7 +61,7 @@ export class ReportsController {
     const start = this.parseDateParam(startDate) ?? (() => {
       const d = new Date(); d.setDate(d.getDate() - 30); d.setHours(0, 0, 0, 0); return d;
     })();
-    const end = this.parseDateParam(endDate) ?? new Date();
+    const end = this.parseEndDateParam(endDate) ?? (() => { const d = new Date(); d.setHours(23, 59, 59, 999); return d; })();
     return this.reportsService.getAppointmentsByDay(start, end, this.getInstitutionId(user));
   }
 
@@ -72,7 +80,7 @@ export class ReportsController {
     return this.reportsService.getAppointmentsByDoctor(
       this.getInstitutionId(user),
       this.parseDateParam(startDate),
-      this.parseDateParam(endDate),
+      this.parseEndDateParam(endDate),
     );
   }
 
@@ -91,7 +99,7 @@ export class ReportsController {
     return this.reportsService.getPatientsAttended(
       this.getInstitutionId(user),
       this.parseDateParam(startDate),
-      this.parseDateParam(endDate),
+      this.parseEndDateParam(endDate),
     );
   }
 
@@ -110,7 +118,7 @@ export class ReportsController {
     return this.reportsService.getReportTable(
       this.getInstitutionId(user),
       this.parseDateParam(startDate),
-      this.parseDateParam(endDate),
+      this.parseEndDateParam(endDate),
     );
   }
 
@@ -133,7 +141,7 @@ export class ReportsController {
       type,
       this.getInstitutionId(user),
       this.parseDateParam(startDate),
-      this.parseDateParam(endDate),
+      this.parseEndDateParam(endDate),
     );
 
     const filename = `reporte-${type}-${new Date().toISOString().split('T')[0]}.csv`;

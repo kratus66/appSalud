@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import { Activity, Lock, Mail, AlertCircle } from 'lucide-react';
+import { Activity, Lock, Mail, AlertCircle, Users, UserCog, Calendar } from 'lucide-react';
 import { authService } from '@/services/auth.service';
 import { useAuthStore } from '@/store/auth';
 import { toast } from 'sonner';
@@ -12,6 +12,38 @@ interface LoginForm {
   email: string;
   password: string;
 }
+
+interface TestCredential {
+  role: string;
+  email: string;
+  password: string;
+  icon: any;
+  color: string;
+}
+
+const TEST_CREDENTIALS: TestCredential[] = [
+  {
+    role: 'Super Admin',
+    email: 'superadmin@hospital.com',
+    password: 'SuperAdmin123!',
+    icon: UserCog,
+    color: 'from-purple-600 to-purple-700',
+  },
+  {
+    role: 'Admin',
+    email: 'admin@hospitalcentral.com',
+    password: 'Admin123!',
+    icon: Users,
+    color: 'from-blue-600 to-blue-700',
+  },
+  {
+    role: 'Planificador',
+    email: 'planificador@hospitalcentral.com',
+    password: 'Plan123!',
+    icon: Calendar,
+    color: 'from-green-600 to-green-700',
+  },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,6 +54,7 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginForm>();
 
@@ -41,6 +74,13 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fillCredentials = (credential: TestCredential) => {
+    setValue('email', credential.email);
+    setValue('password', credential.password);
+    setError('');
+    toast.info(`Credenciales de ${credential.role} cargadas`);
   };
 
   return (
@@ -127,14 +167,36 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo credentials hint */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-600 mb-2 font-semibold">Credenciales de prueba:</p>
-            <div className="space-y-1 text-xs text-gray-500">
-              <p>• Super Admin: superadmin@hospital.com / SuperAdmin123!</p>
-              <p>• Admin: admin@hospitalcentral.com / Admin123!</p>
-              <p>• Planificador: planificador@hospitalcentral.com / Plan123!</p>
+          {/* Test Credentials Selector */}
+          <div className="mt-6">
+            <p className="text-sm text-gray-700 mb-3 font-medium text-center">
+              Credenciales de Prueba
+            </p>
+            <div className="grid grid-cols-1 gap-2">
+              {TEST_CREDENTIALS.map((credential) => {
+                const Icon = credential.icon;
+                return (
+                  <button
+                    key={credential.email}
+                    type="button"
+                    onClick={() => fillCredentials(credential)}
+                    className={`flex items-center space-x-3 p-3 rounded-lg bg-gradient-to-r ${credential.color} text-white hover:shadow-lg transition-all duration-200 group`}
+                  >
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    <div className="flex-1 text-left">
+                      <p className="font-semibold text-sm">{credential.role}</p>
+                      <p className="text-xs opacity-90">{credential.email}</p>
+                    </div>
+                    <div className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                      Click para usar
+                    </div>
+                  </button>
+                );
+              })}
             </div>
+            <p className="text-xs text-gray-500 text-center mt-3">
+              Click en cualquier rol para cargar sus credenciales automáticamente
+            </p>
           </div>
         </div>
 

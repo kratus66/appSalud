@@ -207,9 +207,44 @@ export class ReportsService {
     }
 
     if (type === 'doctors') {
-      const rows = await this.getAppointmentsByDoctor(institutionId, startDate, endDate);
+      const docWhere: any = { role: 'DOCTOR', isActive: true, deletedAt: null };
+      if (institutionId) docWhere.institutionId = institutionId;
+
+      const allDoctors = await this.prisma.user.findMany({
+        where: docWhere,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          specialty: true,
+          doctorProfile: { include: { specialty: { select: { name: true } } } },
+        },
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      });
+
+      // Count appointments per doctor (no date filter for total)
+      const apptWhere: any = { deletedAt: null };
+      if (institutionId) apptWhere.institutionId = institutionId;
+      if (startDate || endDate) {
+        apptWhere.appointmentDate = {};
+        if (startDate) apptWhere.appointmentDate.gte = startDate;
+        if (endDate) apptWhere.appointmentDate.lte = endDate;
+      }
+      const apptGroups = await this.prisma.appointment.groupBy({
+        by: ['doctorId'],
+        where: apptWhere,
+        _count: { id: true },
+      });
+      const countMap = new Map(apptGroups.map((g) => [g.doctorId, g._count.id]));
+
       const header = 'Doctor,Especialidad,Total Citas\n';
-      const body = rows.map((r) => [`"${r.doctor}"`, `"${r.specialty}"`, r.count].join(',')).join('\n');
+      const body = allDoctors
+        .map((d) => {
+          const specialtyName = (d as any).doctorProfile?.specialty?.name || d.specialty || '';
+          const count = countMap.get(d.id) ?? 0;
+          return [`"${d.firstName} ${d.lastName}"`, `"${specialtyName}"`, count].join(',');
+        })
+        .join('\n');
       return header + body;
     }
 

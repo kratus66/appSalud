@@ -41,8 +41,8 @@ function getPresetDates(preset: PresetKey, customStart?: string, customEnd?: str
   const fmt = (d: Date) => d.toISOString().split('T')[0];
   const today = fmt(now);
   if (preset === 'today') return { startDate: today, endDate: today };
-  if (preset === '7d') { const s = new Date(now); s.setDate(s.getDate() - 7); return { startDate: fmt(s), endDate: today }; }
-  if (preset === '30d') { const s = new Date(now); s.setDate(s.getDate() - 30); return { startDate: fmt(s), endDate: today }; }
+  if (preset === '7d') { const s = new Date(now); s.setDate(s.getDate() - 7); const e = new Date(now); e.setDate(e.getDate() + 7); return { startDate: fmt(s), endDate: fmt(e) }; }
+  if (preset === '30d') { const s = new Date(now); s.setDate(s.getDate() - 30); const e = new Date(now); e.setDate(e.getDate() + 30); return { startDate: fmt(s), endDate: fmt(e) }; }
   return { startDate: customStart || today, endDate: customEnd || today };
 }
 
@@ -185,7 +185,7 @@ function ReportesPage() {
             { label: 'Completadas', value: loadingOverview ? '…' : overview?.completedAppointments ?? 0, icon: CheckCircle, color: 'text-emerald-600 bg-emerald-50', border: 'border-emerald-100' },
             { label: 'Canceladas', value: loadingOverview ? '…' : overview?.cancelledAppointments ?? 0, icon: XCircle, color: 'text-rose-600 bg-rose-50', border: 'border-rose-100' },
             { label: 'No Asistió', value: loadingOverview ? '…' : overview?.noShowAppointments ?? 0, icon: AlertCircle, color: 'text-amber-600 bg-amber-50', border: 'border-amber-100' },
-            { label: 'Pacientes', value: loadingOverview ? '…' : patientsAttended?.uniquePatients ?? overview?.totalPatients ?? 0, icon: Users, color: 'text-blue-600 bg-blue-50', border: 'border-blue-100' },
+            { label: 'Pacientes', value: loadingOverview ? '…' : (patientsAttended?.uniquePatients || overview?.totalPatients || 0), icon: Users, color: 'text-blue-600 bg-blue-50', border: 'border-blue-100' },
             { label: 'Médicos Activos', value: loadingOverview ? '…' : overview?.activeDoctors ?? 0, icon: Activity, color: 'text-teal-600 bg-teal-50', border: 'border-teal-100' },
           ].map(({ label, value, icon: Icon, color, border }) => (
             <div key={label} className={`bg-white rounded-xl border ${border} p-4 text-center shadow-sm hover:shadow-md transition-shadow`}>

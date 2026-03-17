@@ -53,9 +53,10 @@ function LogoutButton() {
   return (
     <button 
       onClick={handleLogout}
+      aria-label="Cerrar sesión"
       className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-primary-200 hover:bg-danger-600 hover:text-white transition-all duration-200"
     >
-      <LogOut className="w-5 h-5" />
+      <LogOut className="w-5 h-5" aria-hidden="true" />
       <span className="font-medium">Cerrar Sesión</span>
     </button>
   );

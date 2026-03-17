@@ -131,6 +131,10 @@ model User {
   recurringAppointmentsAsDoctor RecurringAppointment[] @relation("RecurringDoctor")
   
   @@index([institutionId])
+  // Índices compuestos para queries frecuentes
+  @@index([institutionId, role, isActive])
+  @@index([email, isActive])
+  @@index([role, isActive, deletedAt])
   @@map("users")
 }
 
@@ -176,6 +180,10 @@ model AuditEvent {
   @@index([userId])
   @@index([institutionId])
   @@index([createdAt])
+  // Índices compuestos para queries de auditoría
+  @@index([institutionId, eventType, createdAt])
+  @@index([userId, createdAt])
+  @@index([institutionId, createdAt])
   @@map("audit_events")
 }
 
@@ -359,6 +367,8 @@ model Patient {
   @@unique([documentNumber, institutionId])
   @@index([institutionId])
   @@index([documentNumber])
+  // Índice compuesto para búsquedas de pacientes activos
+  @@index([institutionId, isActive, deletedAt])
   @@map("patients")
 }
 
@@ -408,6 +418,11 @@ model Appointment {
   @@index([appointmentDate])
   @@index([status])
   @@index([recurringAppointmentId])
+  // Índices compuestos para queries frecuentes
+  @@index([institutionId, appointmentDate, status])
+  @@index([doctorId, appointmentDate, status])
+  @@index([patientId, appointmentDate])
+  @@index([institutionId, status, appointmentDate])
   @@map("appointments")
 }
 
@@ -442,6 +457,9 @@ model DoctorSchedule {
   @@unique([doctorId, dayOfWeek])
   @@index([doctorId])
   @@index([institutionId])
+  // Índice compuesto para búsqueda de horarios activos por doctor
+  @@index([doctorId, isActive])
+  @@index([institutionId, isActive])
   @@map("doctor_schedules")
 }
 
@@ -467,6 +485,9 @@ model TimeBlock {
   @@index([doctorId])
   @@index([date])
   @@index([institutionId])
+  // Índice compuesto para búsqueda de bloqueos por doctor y fecha
+  @@index([doctorId, date])
+  @@index([institutionId, date])
   @@map("time_blocks")
 }
 

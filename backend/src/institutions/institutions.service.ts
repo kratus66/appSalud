@@ -187,7 +187,7 @@ export class InstitutionsService {
     const activeSubs = await this.prisma.subscription.findMany({
       where: { status: 'ACTIVE' },
       include: { plan: { select: { price: true } } },
-    }).catch(() => []);
+    }).catch(() => [] as const);
     const monthlyRevenue = activeSubs.reduce((sum: number, s: any) => sum + (s.plan?.price ?? 0), 0);
 
     const recent = await this.prisma.institution.findMany({

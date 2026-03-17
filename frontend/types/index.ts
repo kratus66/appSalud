@@ -73,7 +73,7 @@ export interface SubscriptionPlan {
   maxUsers: number;
   maxDoctors: number;
   maxPatients: number;
-  features?: any;
+  features?: string[] | Record<string, boolean>;
   isActive: boolean;
   subscriptionCount?: number;
   createdAt: string;
@@ -98,7 +98,7 @@ export interface AuditEvent {
   eventType: string;
   userId: string | null;
   institutionId: string | null;
-  details: any;
+  details: Record<string, unknown> | null;
   createdAt: string;
   user?: {
     email: string;
@@ -119,7 +119,7 @@ export interface Stats {
     suspended: number;
     inactive: number;
   };
-  recent?: any[];
+  recent?: User[] | Institution[] | Service[];
 }
 
 // Sprint 2 - Configuración Operativa
