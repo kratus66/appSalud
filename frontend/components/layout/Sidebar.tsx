@@ -14,6 +14,7 @@ import {
   Activity,
   Clock,
   Calendar,
+  CalendarDays,
   UserCircle,
   CalendarCheck,
   CalendarClock,
@@ -143,10 +144,10 @@ const menuItems: MenuItem[] = [
     roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PLANIFICADOR],
   },
   {
-    icon: Clock,
-    label: 'Turnos',
-    href: '/turnos',
-    roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PLANIFICADOR],
+    icon: CalendarDays,
+    label: 'Planificador',
+    href: '/planificador',
+    roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PLANIFICADOR, UserRole.APROBADOR],
   },
   {
     icon: FileText,

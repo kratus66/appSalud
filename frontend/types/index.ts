@@ -125,10 +125,12 @@ export interface Stats {
 // Sprint 2 - Configuración Operativa
 
 export enum ShiftType {
-  MORNING = 'MORNING',
+  MORNING   = 'MORNING',
   AFTERNOON = 'AFTERNOON',
-  NIGHT = 'NIGHT',
-  SPECIAL = 'SPECIAL',
+  NIGHT_6H  = 'NIGHT_6H',
+  NIGHT_12H = 'NIGHT_12H',
+  DAY_OFF   = 'DAY_OFF',
+  SPECIAL   = 'SPECIAL',
 }
 
 export interface Service {

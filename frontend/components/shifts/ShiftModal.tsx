@@ -25,10 +25,12 @@ export interface ShiftFormData {
 }
 
 const shiftTypeOptions = [
-  { value: ShiftType.MORNING, label: 'Mañana' },
-  { value: ShiftType.AFTERNOON, label: 'Tarde' },
-  { value: ShiftType.NIGHT, label: 'Noche' },
-  { value: ShiftType.SPECIAL, label: 'Especial' },
+  { value: ShiftType.MORNING,   label: 'Mañana (07:00–13:00)' },
+  { value: ShiftType.AFTERNOON, label: 'Tarde (13:00–19:00)' },
+  { value: ShiftType.NIGHT_6H,  label: 'Noche 6h (19:00–01:00)' },
+  { value: ShiftType.NIGHT_12H, label: 'Noche 12h (19:00–07:00)' },
+  { value: ShiftType.DAY_OFF,   label: 'Libre / Descanso' },
+  { value: ShiftType.SPECIAL,   label: 'Especial' },
 ];
 
 const colorOptions = [

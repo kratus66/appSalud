@@ -43,6 +43,7 @@ model Institution {
   doctorSchedules DoctorSchedule[]
   timeBlocks     TimeBlock[]
   subscriptions  Subscription[]
+  workSchedules  WorkSchedule[]
   
   @@map("institutions")
 }
@@ -129,6 +130,11 @@ model User {
   doctorSchedules    DoctorSchedule[]
   timeBlocks         TimeBlock[]
   recurringAppointmentsAsDoctor RecurringAppointment[] @relation("RecurringDoctor")
+  // Sprint 8 - Mallas de Turnos
+  shiftAssignments     ShiftAssignment[]    @relation("UserAssignments")
+  workSchedulesCreated WorkSchedule[]       @relation("WorkScheduleCreator")
+  workSchedulesApproved WorkSchedule[]      @relation("WorkScheduleApprover")
+  scheduleViolations   ScheduleViolation[]  @relation("UserViolations")
   
   @@index([institutionId])
   // Índices compuestos para queries frecuentes
@@ -214,7 +220,7 @@ model Shift {
   name          String
   startTime     String   @map("start_time") // Formato "HH:MM"
   endTime       String   @map("end_time")   // Formato "HH:MM"
-  shiftType     String   @map("shift_type") // MORNING, AFTERNOON, NIGHT, SPECIAL
+  shiftType     String   @map("shift_type") // MORNING, AFTERNOON, NIGHT_6H, NIGHT_12H, DAY_OFF, SPECIAL
   color         String   @default("#3b82f6")
   
   // Multi-tenant
@@ -222,6 +228,8 @@ model Shift {
   institution   Institution @relation(fields: [institutionId], references: [id])
   
   isActive      Boolean  @default(true)
+
+  shiftAssignments ShiftAssignment[]
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -528,4 +536,114 @@ model RecurringAppointment {
   @@index([doctorId])
   @@index([institutionId])
   @@map("recurring_appointments")
+}
+
+// ─── Sprint 8: Mallas de Turnos ───────────────────────────────────────────────
+
+// Período de programación (semanal, quincenal o mensual)
+model WorkSchedule {
+  id            String   @id @default(uuid())
+  name          String
+  // WEEKLY | BIWEEKLY | MONTHLY
+  periodType    String   @map("period_type")
+  startDate     DateTime @map("start_date")
+  endDate       DateTime @map("end_date")
+  // DRAFT | PENDING_APPROVAL | APPROVED | REJECTED
+  status        String   @default("DRAFT")
+  version       Int      @default(1)
+  notes         String?
+  rejectReason  String?  @map("reject_reason")
+
+  institutionId String   @map("institution_id")
+  institution   Institution @relation(fields: [institutionId], references: [id])
+
+  createdById   String   @map("created_by_id")
+  createdBy     User     @relation("WorkScheduleCreator", fields: [createdById], references: [id])
+
+  approvedById  String?  @map("approved_by_id")
+  approvedBy    User?    @relation("WorkScheduleApprover", fields: [approvedById], references: [id])
+
+  approvedAt    DateTime? @map("approved_at")
+
+  assignments   ShiftAssignment[]
+  violations    ScheduleViolation[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([institutionId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@map("work_schedules")
+}
+
+// Asignación de un turno a un trabajador en un día específico
+model ShiftAssignment {
+  id            String   @id @default(uuid())
+
+  scheduleId    String   @map("schedule_id")
+  schedule      WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  userId        String   @map("user_id")
+  user          User     @relation("UserAssignments", fields: [userId], references: [id])
+
+  assignmentDate DateTime @map("assignment_date")
+
+  // Tipo de turno: MORNING, AFTERNOON, NIGHT_6H, NIGHT_12H, DAY_OFF, SPECIAL
+  shiftType     String   @map("shift_type")
+
+  // FK opcional al catálogo de turnos configurado por la institución
+  shiftId       String?  @map("shift_id")
+  shift         Shift?   @relation(fields: [shiftId], references: [id])
+
+  // Hora de inicio y fin (override sobre la hora predeterminada del shiftType)
+  startTime     String?  @map("start_time") // "HH:MM"
+  endTime       String?  @map("end_time")   // "HH:MM"
+
+  // Horas efectivas calculadas automáticamente según shiftType
+  hoursWorked   Float    @default(0) @map("hours_worked")
+
+  notes         String?
+
+  institutionId String   @map("institution_id")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([scheduleId, userId, assignmentDate])
+  @@index([scheduleId])
+  @@index([userId])
+  @@index([assignmentDate])
+  @@index([shiftId])
+  @@map("shift_assignments")
+}
+
+// Violaciones detectadas por el motor de validación
+model ScheduleViolation {
+  id            String   @id @default(uuid())
+
+  scheduleId    String   @map("schedule_id")
+  schedule      WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  // Tipos: WEEKLY_HOURS | MAX_CONSECUTIVE | REST_AFTER_NIGHT | MIN_COVERAGE | DUPLICATE_NIGHT
+  violationType String   @map("violation_type")
+  severity      String   @default("ERROR") // ERROR | WARNING
+
+  // Día afectado (puede ser nulo para violaciones globales)
+  affectedDate  DateTime? @map("affected_date")
+
+  // Trabajador afectado (puede ser nulo para violaciones de cobertura)
+  affectedUserId String?  @map("affected_user_id")
+  affectedUser   User?    @relation("UserViolations", fields: [affectedUserId], references: [id])
+
+  message       String
+  suggestion    String?
+
+  institutionId String   @map("institution_id")
+
+  createdAt     DateTime @default(now())
+
+  @@index([scheduleId])
+  @@index([violationType])
+  @@map("schedule_violations")
 }

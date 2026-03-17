@@ -31,10 +31,12 @@ export enum SubscriptionStatus {
 }
 
 export enum ShiftType {
-  MORNING = 'MORNING',
-  AFTERNOON = 'AFTERNOON',
-  NIGHT = 'NIGHT',
-  SPECIAL = 'SPECIAL',
+  MORNING   = 'MORNING',    // Mañana:    07:00–13:00, 6h, demanda mínima 3 personas
+  AFTERNOON = 'AFTERNOON',  // Tarde:     13:00–19:00, 6h, demanda mínima 1 persona
+  NIGHT_6H  = 'NIGHT_6H',   // Noche 6h:  19:00–01:00, 6h, demanda mínima 1 persona
+  NIGHT_12H = 'NIGHT_12H',  // Noche 12h: 19:00–07:00, 12h, demanda mínima 1 persona
+  DAY_OFF   = 'DAY_OFF',    // Libre:     sin horas, sin demanda
+  SPECIAL   = 'SPECIAL',    // Especial:  configuración libre
 }
 
 // Sprint 3 - Módulo de Citas
@@ -102,6 +104,17 @@ export enum AuditEventType {
   BLOCK_DELETED = 'BLOCK_DELETED',
   RECURRING_APPOINTMENT_CREATED = 'RECURRING_APPOINTMENT_CREATED',
   RECURRING_APPOINTMENT_CANCELLED = 'RECURRING_APPOINTMENT_CANCELLED',
+  // Sprint 8 - Mallas de Turnos
+  WORK_SCHEDULE_CREATED = 'WORK_SCHEDULE_CREATED',
+  WORK_SCHEDULE_UPDATED = 'WORK_SCHEDULE_UPDATED',
+  WORK_SCHEDULE_SUBMITTED = 'WORK_SCHEDULE_SUBMITTED',
+  WORK_SCHEDULE_APPROVED = 'WORK_SCHEDULE_APPROVED',
+  WORK_SCHEDULE_REJECTED = 'WORK_SCHEDULE_REJECTED',
+  WORK_SCHEDULE_VALIDATED = 'WORK_SCHEDULE_VALIDATED',
+  WORK_SCHEDULE_DELETED = 'WORK_SCHEDULE_DELETED',
+  ASSIGNMENT_CREATED = 'ASSIGNMENT_CREATED',
+  ASSIGNMENT_UPDATED = 'ASSIGNMENT_UPDATED',
+  ASSIGNMENT_DELETED = 'ASSIGNMENT_DELETED',
 }
 
 // Sprint 4 - Frecuencia de Citas Recurrentes

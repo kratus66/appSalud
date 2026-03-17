@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { AuditModule } from './audit/audit.module';
 import { ServicesModule } from './services/services.module';
 import { ShiftsModule } from './shifts/shifts.module';
+import { SchedulesModule } from './schedules/schedules.module';
 import { ContractsModule } from './contracts/contracts.module';
 import { HolidaysModule } from './holidays/holidays.module';
 import { PatientsModule } from './patients/patients.module';
@@ -44,6 +45,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
     AuditModule,
     ServicesModule,
     ShiftsModule,
+    SchedulesModule,
     ContractsModule,
     HolidaysModule,
     PatientsModule,
