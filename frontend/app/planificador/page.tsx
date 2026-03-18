@@ -174,6 +174,14 @@ function AssignShiftModal({
 
   const shiftOptions: ShiftType[] = ['MORNING', 'AFTERNOON', 'NIGHT_6H', 'NIGHT_12H', 'DAY_OFF', 'SPECIAL'];
 
+  const fmtTime = (t: string) => {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    const period = h >= 12 ? 'pm' : 'am';
+    const h12 = h % 12 || 12;
+    return m === 0 ? `${h12}${period}` : `${h12}:${String(m).padStart(2, '0')}${period}`;
+  };
+
   const mutation = useMutation({
     mutationFn: () =>
       schedulesService.bulkAssign(scheduleId, {
@@ -222,14 +230,25 @@ function AssignShiftModal({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de turno</label>
             <div className="grid grid-cols-2 gap-2">
-              {shiftOptions.map((s) => (
-                <button key={s} type="button" onClick={() => handleShiftTypeChange(s)}
-                  className={`px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
-                    shiftType === s ? SHIFT_COLORS[s] + ' ring-2 ring-indigo-400' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                  }`}>
-                  {SHIFT_LABELS[s]}
-                </button>
-              ))}
+              {shiftOptions.map((s) => {
+                const times = DEFAULT_TIMES[s];
+                const timeLabel = times.start
+                  ? `${fmtTime(times.start)} – ${fmtTime(times.end)}`
+                  : 'Sin horario';
+                return (
+                  <button key={s} type="button" onClick={() => handleShiftTypeChange(s)}
+                    className={`flex flex-col items-center justify-center px-2 py-2.5 rounded-lg border text-xs font-medium transition-all ${
+                      shiftType === s
+                        ? SHIFT_COLORS[s] + ' ring-2 ring-offset-1 ring-indigo-400 shadow-sm'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
+                    }`}>
+                    <span>{SHIFT_LABELS[s]}</span>
+                    <span className={`mt-0.5 font-normal ${shiftType === s ? 'opacity-75' : 'text-gray-400'}`} style={{ fontSize: '10px' }}>
+                      {timeLabel}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
           {shiftType !== 'DAY_OFF' && (
