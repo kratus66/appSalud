@@ -57,6 +57,8 @@ export interface ShiftAssignment {
   endTime?: string;
   hoursWorked: number;
   notes?: string;
+  absenceType?: string | null;
+  absenceNotes?: string | null;
   institutionId: string;
   user?: { id: string; firstName: string; lastName: string; role: string };
 }
@@ -123,21 +125,30 @@ export interface BulkAssignDto {
 }
 
 export const SHIFT_LABELS: Record<ShiftType, string> = {
-  MORNING: 'Mañana',
-  AFTERNOON: 'Tarde',
-  NIGHT_6H: 'Noche 6h',
-  NIGHT_12H: 'Noche 12h',
-  DAY_OFF: 'Descanso',
-  SPECIAL: 'Especial',
+  MORNING: 'M — Mañana',
+  AFTERNOON: 'T — Tarde',
+  NIGHT_6H: 'N6 — Noche 6h',
+  NIGHT_12H: 'N — Noche',
+  DAY_OFF: 'L — Libre',
+  SPECIAL: 'MT — Día',
+};
+
+export const SHIFT_SHORT_LABELS: Record<ShiftType, string> = {
+  MORNING: 'M',
+  AFTERNOON: 'T',
+  NIGHT_6H: 'N6',
+  NIGHT_12H: 'N',
+  DAY_OFF: 'L',
+  SPECIAL: 'MT',
 };
 
 export const SHIFT_COLORS: Record<ShiftType, string> = {
-  MORNING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  AFTERNOON: 'bg-blue-100 text-blue-800 border-blue-200',
+  MORNING: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  AFTERNOON: 'bg-blue-100 text-blue-800 border-blue-300',
   NIGHT_6H: 'bg-purple-100 text-purple-800 border-purple-200',
-  NIGHT_12H: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-  DAY_OFF: 'bg-gray-100 text-gray-500 border-gray-200',
-  SPECIAL: 'bg-green-100 text-green-800 border-green-200',
+  NIGHT_12H: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  DAY_OFF: 'bg-gray-100 text-gray-400 border-gray-200',
+  SPECIAL: 'bg-green-100 text-green-800 border-green-300',
 };
 
 export const SHIFT_HOURS: Record<ShiftType, number> = {
@@ -146,7 +157,7 @@ export const SHIFT_HOURS: Record<ShiftType, number> = {
   NIGHT_6H: 6,
   NIGHT_12H: 12,
   DAY_OFF: 0,
-  SPECIAL: 6,
+  SPECIAL: 12,
 };
 
 export const STATUS_LABELS: Record<ScheduleStatus, string> = {
@@ -164,3 +175,37 @@ export const STATUS_COLORS: Record<ScheduleStatus, string> = {
   REJECTED: 'bg-red-100 text-red-700',
   ARCHIVED: 'bg-slate-100 text-slate-500',
 };
+
+export type AbsenceType = 'VACATION' | 'SICK_LEAVE' | 'PERSONAL' | 'UNPREDICTED';
+
+export const ABSENCE_LABELS: Record<AbsenceType, string> = {
+  VACATION: 'Vacaciones',
+  SICK_LEAVE: 'Incapacidad',
+  PERSONAL: 'Personal',
+  UNPREDICTED: 'Imprevisto',
+};
+
+export interface PeakHourConfig {
+  id: string;
+  serviceId: string;
+  service?: { id: string; name: string };
+  institutionId: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  minStaff: number;
+  daysOfWeek?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GenerateScheduleDto {
+  considerPreviousMonth?: boolean;
+  userIds?: string[];
+}
+
+export interface MarkAbsenceDto {
+  absenceType: AbsenceType;
+  absenceNotes?: string;
+}

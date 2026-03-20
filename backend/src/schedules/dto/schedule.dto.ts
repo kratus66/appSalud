@@ -1,6 +1,6 @@
 import {
   IsString, IsNotEmpty, IsIn, IsDateString, IsOptional, IsUUID,
-  IsArray, ValidateNested, ArrayMinSize,
+  IsArray, ValidateNested, ArrayMinSize, IsBoolean, IsInt, Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -93,4 +93,95 @@ export class RejectScheduleDto {
   @IsString()
   @IsNotEmpty()
   reason: string;
+}
+
+export class GenerateScheduleDto {
+  @ApiPropertyOptional({ description: 'Consultar mes anterior para rotar turnos. Default: true', default: true })
+  @IsOptional()
+  @IsBoolean()
+  considerPreviousMonth?: boolean;
+
+  @ApiPropertyOptional({ description: 'IDs de trabajadores específicos. Si se omite, incluye todos.', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  userIds?: string[];
+}
+
+export class MarkAbsenceDto {
+  @ApiProperty({ enum: ['VACATION', 'SICK_LEAVE', 'PERSONAL', 'UNPREDICTED'] })
+  @IsIn(['VACATION', 'SICK_LEAVE', 'PERSONAL', 'UNPREDICTED'])
+  absenceType: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  absenceNotes?: string;
+}
+
+export class CreatePeakHourConfigDto {
+  @ApiProperty()
+  @IsUUID()
+  serviceId: string;
+
+  @ApiProperty({ example: 'Horas pico mañana bacteriología' })
+  @IsString()
+  @IsNotEmpty()
+  label: string;
+
+  @ApiProperty({ example: '06:00' })
+  @IsString()
+  startTime: string;
+
+  @ApiProperty({ example: '12:00' })
+  @IsString()
+  endTime: string;
+
+  @ApiProperty({ example: 2 })
+  @IsInt()
+  @Min(1)
+  minStaff: number;
+
+  @ApiPropertyOptional({ example: '[1,2,3,4,5]' })
+  @IsOptional()
+  @IsString()
+  daysOfWeek?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  institutionId?: string;
+}
+
+export class UpdatePeakHourConfigDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  label?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  startTime?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  endTime?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  minStaff?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  daysOfWeek?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

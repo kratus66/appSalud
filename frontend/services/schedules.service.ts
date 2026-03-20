@@ -7,6 +7,9 @@ import type {
   ScheduleViolation,
   ScheduleSummary,
   ValidationResult,
+  PeakHourConfig,
+  GenerateScheduleDto,
+  MarkAbsenceDto,
 } from '../types/schedule.types';
 
 const BASE = '/schedules';
@@ -100,5 +103,59 @@ export const schedulesService = {
   getSummary: async (id: string): Promise<ScheduleSummary> => {
     const { data } = await api.get<ScheduleSummary>(`${BASE}/${id}/summary`);
     return data;
+  },
+
+  // ─── GENERATE ─────────────────────────────────────────────────────────────
+
+  generate: async (
+    scheduleId: string,
+    dto: GenerateScheduleDto,
+  ): Promise<{ generated: number; workers: number }> => {
+    const { data } = await api.post(`${BASE}/${scheduleId}/generate`, dto);
+    return data;
+  },
+
+  // ─── ABSENCES ─────────────────────────────────────────────────────────────
+
+  markAbsence: async (
+    scheduleId: string,
+    assignmentId: string,
+    dto: MarkAbsenceDto,
+  ): Promise<ShiftAssignment> => {
+    const { data } = await api.put(
+      `${BASE}/${scheduleId}/assignments/${assignmentId}/absence`,
+      dto,
+    );
+    return data;
+  },
+
+  removeAbsence: async (scheduleId: string, assignmentId: string): Promise<ShiftAssignment> => {
+    const { data } = await api.delete(
+      `${BASE}/${scheduleId}/assignments/${assignmentId}/absence`,
+    );
+    return data;
+  },
+
+  // ─── PEAK HOURS ───────────────────────────────────────────────────────────
+
+  getPeakHours: async (serviceId?: string): Promise<PeakHourConfig[]> => {
+    const { data } = await api.get<PeakHourConfig[]>(`${BASE}/peak-hours`, {
+      params: serviceId ? { serviceId } : {},
+    });
+    return data;
+  },
+
+  createPeakHour: async (dto: Partial<PeakHourConfig>): Promise<PeakHourConfig> => {
+    const { data } = await api.post<PeakHourConfig>(`${BASE}/peak-hours`, dto);
+    return data;
+  },
+
+  updatePeakHour: async (id: string, dto: Partial<PeakHourConfig>): Promise<PeakHourConfig> => {
+    const { data } = await api.put<PeakHourConfig>(`${BASE}/peak-hours/${id}`, dto);
+    return data;
+  },
+
+  deletePeakHour: async (id: string): Promise<void> => {
+    await api.delete(`${BASE}/peak-hours/${id}`);
   },
 };

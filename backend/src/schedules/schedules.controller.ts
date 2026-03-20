@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -22,6 +23,10 @@ import {
   CreateShiftAssignmentDto,
   BulkAssignDto,
   RejectScheduleDto,
+  GenerateScheduleDto,
+  MarkAbsenceDto,
+  CreatePeakHourConfigDto,
+  UpdatePeakHourConfigDto,
 } from './dto/schedule.dto';
 
 @Controller('schedules')
@@ -47,6 +52,38 @@ export class SchedulesController {
   findAll(@GetUser() user: any) {
     return this.schedulesService.findAll(user);
   }
+
+  // ─── PEAK HOURS (antes de :id para evitar conflicto de rutas) ──
+
+  @Get('peak-hours')
+  @Roles(UserRole.ADMIN, UserRole.PLANIFICADOR, UserRole.APROBADOR, UserRole.SUPER_ADMIN)
+  getPeakHours(@Query('serviceId') serviceId: string, @GetUser() user: any) {
+    return this.schedulesService.getPeakHours(serviceId || undefined, user);
+  }
+
+  @Post('peak-hours')
+  @Roles(UserRole.ADMIN, UserRole.PLANIFICADOR, UserRole.SUPER_ADMIN)
+  createPeakHour(@Body() dto: CreatePeakHourConfigDto, @GetUser() user: any) {
+    return this.schedulesService.createPeakHour(dto, user);
+  }
+
+  @Put('peak-hours/:peakId')
+  @Roles(UserRole.ADMIN, UserRole.PLANIFICADOR, UserRole.SUPER_ADMIN)
+  updatePeakHour(
+    @Param('peakId') id: string,
+    @Body() dto: UpdatePeakHourConfigDto,
+    @GetUser() user: any,
+  ) {
+    return this.schedulesService.updatePeakHour(id, dto, user);
+  }
+
+  @Delete('peak-hours/:peakId')
+  @Roles(UserRole.ADMIN, UserRole.PLANIFICADOR, UserRole.SUPER_ADMIN)
+  deletePeakHour(@Param('peakId') id: string, @GetUser() user: any) {
+    return this.schedulesService.deletePeakHour(id, user);
+  }
+
+  // ─── CRUD (:id) ────────────────────────────────────────────────
 
   @Get(':id')
   @Roles(
@@ -164,5 +201,41 @@ export class SchedulesController {
   )
   getSummary(@Param('id') id: string, @GetUser() user: any) {
     return this.schedulesService.getSummary(id, user);
+  }
+
+  // ─── GENERATE ─────────────────────────────────────────────
+
+  @Post(':id/generate')
+  @Roles(UserRole.ADMIN, UserRole.PLANIFICADOR, UserRole.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  generate(
+    @Param('id') id: string,
+    @Body() dto: GenerateScheduleDto,
+    @GetUser() user: any,
+  ) {
+    return this.schedulesService.generate(id, dto, user);
+  }
+
+  // ─── ABSENCES ───────────────────────────────────────────────
+
+  @Put(':id/assignments/:assignmentId/absence')
+  @Roles(UserRole.ADMIN, UserRole.PLANIFICADOR, UserRole.SUPER_ADMIN)
+  markAbsence(
+    @Param('id') scheduleId: string,
+    @Param('assignmentId') assignmentId: string,
+    @Body() dto: MarkAbsenceDto,
+    @GetUser() user: any,
+  ) {
+    return this.schedulesService.markAbsence(scheduleId, assignmentId, dto, user);
+  }
+
+  @Delete(':id/assignments/:assignmentId/absence')
+  @Roles(UserRole.ADMIN, UserRole.PLANIFICADOR, UserRole.SUPER_ADMIN)
+  removeAbsence(
+    @Param('id') scheduleId: string,
+    @Param('assignmentId') assignmentId: string,
+    @GetUser() user: any,
+  ) {
+    return this.schedulesService.removeAbsence(scheduleId, assignmentId, user);
   }
 }

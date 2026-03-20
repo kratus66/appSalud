@@ -15,6 +15,10 @@ import {
   CreateShiftAssignmentDto,
   BulkAssignDto,
   RejectScheduleDto,
+  GenerateScheduleDto,
+  MarkAbsenceDto,
+  CreatePeakHourConfigDto,
+  UpdatePeakHourConfigDto,
 } from './dto/schedule.dto';
 
 @Injectable()
@@ -573,5 +577,258 @@ export class SchedulesService {
         warnings: schedule.violations.filter((v) => v.severity === 'WARNING').length,
       },
     };
+  }
+
+  // ─── GENERATE (Auto-generator de malla mensual) ────────────────────────────────
+
+  async generate(scheduleId: string, dto: GenerateScheduleDto, user: any) {
+    const institutionId = this.resolveInstitution(user);
+    const schedule = await this.prisma.workSchedule.findUnique({ where: { id: scheduleId } });
+    if (!schedule) throw new NotFoundException('Malla no encontrada');
+    if (user.role !== UserRole.SUPER_ADMIN) this.assertInstitution(schedule, institutionId);
+    this.assertDraft(schedule);
+
+    const instId = institutionId || schedule.institutionId;
+
+    // 1. Obtener trabajadores activos de la institución
+    const baseWhere: any = { institutionId: instId, isActive: true, deletedAt: null };
+    if (dto.userIds?.length) baseWhere.id = { in: dto.userIds };
+
+    const workers = await this.prisma.user.findMany({
+      where: baseWhere,
+      select: { id: true, firstName: true, lastName: true, role: true },
+      orderBy: { id: 'asc' },
+    });
+
+    if (workers.length === 0) {
+      throw new BadRequestException('No hay trabajadores activos para generar la malla');
+    }
+
+    // 2. Turno dominante del mes anterior para garantizar rotación
+    const previousDominant: Record<string, string> = {};
+    if (dto.considerPreviousMonth !== false) {
+      const prevEnd = new Date(schedule.startDate);
+      prevEnd.setUTCDate(prevEnd.getUTCDate() - 1);
+      const prevStart = new Date(prevEnd);
+      prevStart.setUTCDate(1);
+
+      const prevAssignments = await this.prisma.shiftAssignment.findMany({
+        where: {
+          institutionId: instId,
+          assignmentDate: { gte: prevStart, lte: prevEnd },
+          shiftType: { not: 'DAY_OFF' },
+          absenceType: null,
+        },
+        select: { userId: true, shiftType: true },
+      });
+
+      const freq: Record<string, Record<string, number>> = {};
+      for (const a of prevAssignments) {
+        if (!freq[a.userId]) freq[a.userId] = {};
+        freq[a.userId][a.shiftType] = (freq[a.userId][a.shiftType] || 0) + 1;
+      }
+      for (const [uid, counts] of Object.entries(freq)) {
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        if (sorted.length > 0) previousDominant[uid] = sorted[0][0];
+      }
+    }
+
+    // 3. Asignar grupos de rotación (M / T / N / MT)
+    const rotationOrder = ['MORNING', 'AFTERNOON', 'NIGHT_12H', 'SPECIAL'] as const;
+    const workerGroupIndex: Record<string, number> = {};
+    for (let i = 0; i < workers.length; i++) {
+      const prev = previousDominant[workers[i].id];
+      if (prev) {
+        const prevIdx = rotationOrder.indexOf(prev as any);
+        workerGroupIndex[workers[i].id] = prevIdx !== -1 ? (prevIdx + 1) % 4 : i % 4;
+      } else {
+        workerGroupIndex[workers[i].id] = i % 4;
+      }
+    }
+
+    // 4. Dividir el período en semanas de 7 días
+    const allDates = this.getDatesInRange(schedule.startDate, schedule.endDate);
+    const weeks: Date[][] = [];
+    for (let i = 0; i < allDates.length; i += 7) {
+      weeks.push(allDates.slice(i, Math.min(i + 7, allDates.length)));
+    }
+
+    // 5. Generar asignaciones para cada trabajador y cada semana
+    const toCreate: any[] = [];
+    for (let workerIdx = 0; workerIdx < workers.length; workerIdx++) {
+      const worker = workers[workerIdx];
+      const groupBase = workerGroupIndex[worker.id];
+      for (let weekIdx = 0; weekIdx < weeks.length; weekIdx++) {
+        const week = weeks[weekIdx];
+        const shiftType = rotationOrder[(groupBase + weekIdx) % 4];
+        const seed = (workerIdx + weekIdx * 3) % week.length;
+        const dayAssignments = this.buildWeekAssignments(shiftType, week, seed);
+        for (const da of dayAssignments) {
+          const config = SHIFT_CONFIG[da.shift];
+          toCreate.push({
+            scheduleId,
+            userId: worker.id,
+            assignmentDate: da.date,
+            shiftType: da.shift,
+            hoursWorked: config?.durationHours ?? 0,
+            startTime: config?.startTime || null,
+            endTime: config?.endTime || null,
+            institutionId: instId,
+          });
+        }
+      }
+    }
+
+    // 6. Eliminar asignaciones previas que no sean ausencias marcadas
+    await this.prisma.shiftAssignment.deleteMany({
+      where: { scheduleId, absenceType: null },
+    });
+
+    // 7. Insertar nuevas asignaciones en bloque
+    await this.prisma.shiftAssignment.createMany({
+      data: toCreate,
+      skipDuplicates: true,
+    });
+
+    await this.auditService.log({
+      eventType: AuditEventType.WORK_SCHEDULE_UPDATED,
+      userId: user.id,
+      institutionId: instId,
+      entityType: 'WorkSchedule',
+      entityId: scheduleId,
+      details: { action: 'AUTO_GENERATED', workers: workers.length, assignments: toCreate.length },
+    });
+
+    return { generated: toCreate.length, workers: workers.length };
+  }
+
+  // Construye el patrón de turnos para una semana dado un tipo de turno
+  private buildWeekAssignments(
+    shiftType: string,
+    week: Date[],
+    seed: number,
+  ): Array<{ date: Date; shift: string }> {
+    const len = week.length;
+    const pattern: string[] = new Array(len).fill('DAY_OFF');
+
+    if (shiftType === 'MORNING' || shiftType === 'AFTERNOON') {
+      // 6h × 6 días = 36h, 1 día libre
+      const offIdx = seed % len;
+      for (let i = 0; i < len; i++) {
+        pattern[i] = i === offIdx ? 'DAY_OFF' : shiftType;
+      }
+    } else {
+      // NIGHT_12H o SPECIAL (MT): 12h × 3 turnos = 36h
+      // Patrón: turno, descanso, turno, descanso, turno, descanso, libre
+      const startOffset = seed % 2;
+      let workCount = 0;
+      for (let i = startOffset; i < len && workCount < 3; i += 2) {
+        pattern[i] = shiftType;
+        workCount++;
+      }
+    }
+
+    return week.map((date, i) => ({ date, shift: pattern[i] }));
+  }
+
+  // ─── MARK ABSENCE ───────────────────────────────────────────────
+
+  async markAbsence(
+    scheduleId: string,
+    assignmentId: string,
+    dto: MarkAbsenceDto,
+    user: any,
+  ) {
+    const institutionId = this.resolveInstitution(user);
+    const schedule = await this.prisma.workSchedule.findUnique({ where: { id: scheduleId } });
+    if (!schedule) throw new NotFoundException('Malla no encontrada');
+    if (user.role !== UserRole.SUPER_ADMIN) this.assertInstitution(schedule, institutionId);
+    this.assertDraft(schedule);
+
+    const assignment = await this.prisma.shiftAssignment.findFirst({
+      where: { id: assignmentId, scheduleId },
+    });
+    if (!assignment) throw new NotFoundException('Asignación no encontrada');
+
+    const updated = await this.prisma.shiftAssignment.update({
+      where: { id: assignmentId },
+      data: {
+        absenceType: dto.absenceType,
+        absenceNotes: dto.absenceNotes ?? null,
+      },
+      include: { user: { select: { id: true, firstName: true, lastName: true } } },
+    });
+
+    await this.auditService.log({
+      eventType: AuditEventType.ASSIGNMENT_UPDATED,
+      userId: user.id,
+      institutionId: institutionId || schedule.institutionId,
+      entityType: 'ShiftAssignment',
+      entityId: assignmentId,
+      details: { absenceType: dto.absenceType },
+    });
+
+    return updated;
+  }
+
+  async removeAbsence(scheduleId: string, assignmentId: string, user: any) {
+    const institutionId = this.resolveInstitution(user);
+    const schedule = await this.prisma.workSchedule.findUnique({ where: { id: scheduleId } });
+    if (!schedule) throw new NotFoundException('Malla no encontrada');
+    if (user.role !== UserRole.SUPER_ADMIN) this.assertInstitution(schedule, institutionId);
+    this.assertDraft(schedule);
+
+    return this.prisma.shiftAssignment.update({
+      where: { id: assignmentId },
+      data: { absenceType: null, absenceNotes: null },
+    });
+  }
+
+  // ─── PEAK HOURS CRUD ─────────────────────────────────────────────
+
+  async getPeakHours(serviceId: string | undefined, user: any) {
+    const institutionId = this.resolveInstitution(user);
+    const where: any = {};
+    if (institutionId) where.institutionId = institutionId;
+    if (serviceId) where.serviceId = serviceId;
+    return this.prisma.peakHourConfig.findMany({
+      where,
+      include: { service: { select: { id: true, name: true } } },
+      orderBy: { startTime: 'asc' },
+    });
+  }
+
+  async createPeakHour(dto: CreatePeakHourConfigDto, user: any) {
+    const institutionId = this.resolveInstitution(user, dto);
+    if (!institutionId) throw new BadRequestException('Se requiere institutionId');
+    return this.prisma.peakHourConfig.create({
+      data: {
+        serviceId: dto.serviceId,
+        institutionId,
+        label: dto.label,
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+        minStaff: dto.minStaff,
+        daysOfWeek: dto.daysOfWeek ?? null,
+        isActive: true,
+      },
+    });
+  }
+
+  async updatePeakHour(id: string, dto: UpdatePeakHourConfigDto, user: any) {
+    const institutionId = this.resolveInstitution(user);
+    const config = await this.prisma.peakHourConfig.findUnique({ where: { id } });
+    if (!config) throw new NotFoundException('Configuración de horas pico no encontrada');
+    if (institutionId && config.institutionId !== institutionId) throw new ForbiddenException('Acceso denegado');
+    return this.prisma.peakHourConfig.update({ where: { id }, data: dto });
+  }
+
+  async deletePeakHour(id: string, user: any) {
+    const institutionId = this.resolveInstitution(user);
+    const config = await this.prisma.peakHourConfig.findUnique({ where: { id } });
+    if (!config) throw new NotFoundException('Configuración de horas pico no encontrada');
+    if (institutionId && config.institutionId !== institutionId) throw new ForbiddenException('Acceso denegado');
+    await this.prisma.peakHourConfig.delete({ where: { id } });
+    return { message: 'Configuración eliminada' };
   }
 }
